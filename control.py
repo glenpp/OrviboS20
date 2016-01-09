@@ -45,15 +45,6 @@ else:
 	usage()
 
 
-# initial ident
-def connectout():
-	sock = socket.socket (
-			socket.AF_INET,	# Internet
-			socket.SOCK_DGRAM	# UDP
-		)
-	sock.setsockopt ( socket.SOL_SOCKET, socket.SO_BROADCAST, 1 )	# https://stackoverflow.com/questions/11457676/python-socket-error-errno-13-permission-denied
-	sock.settimeout ( 2 )	# seconds - in reality << 1 is needed
-	return sock
 
 
 # decifer returned / broadcast discovery packets
@@ -63,6 +54,7 @@ class orviboS20:
 	def __init__ ( self ):
 		self.subscribed = None
 		self.exitontimeout = False
+		# TODO get a lock (file lock?) for port 10000 TODO
 		# get a connection sorted
 		self.sock = socket.socket (
 				socket.AF_INET,	# Internet
@@ -233,7 +225,13 @@ class orviboS20:
 
 
 if command == 'connect':
-	sock = connectout()
+	sock = socket.socket (
+			socket.AF_INET,	# Internet
+			socket.SOCK_DGRAM	# UDP
+		)
+	sock.setsockopt ( socket.SOL_SOCKET, socket.SO_BROADCAST, 1 )	# https://stackoverflow.com/questions/11457676/python-socket-error-errno-13-permission-denied
+	sock.settimeout ( 2 )	# seconds - in reality << 1 is needed
+
 	# connect to network
 	sock.sendto ( 'HF-A11ASSISTHREAD' , (ip,48899) )
 	data,addr = sock.recvfrom ( 1024 )
