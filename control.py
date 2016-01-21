@@ -10,6 +10,7 @@
 import sys
 import socket
 import struct
+import time
 
 import pprint
 
@@ -23,6 +24,8 @@ def usage():
 	sys.stderr.write ( "\t%s discover <broadcast addr> <MAC>\n" % (sys.argv[0]) )
 	sys.stderr.write ( "\t%s globaldiscover <broadcast addr>\n" % (sys.argv[0]) )
 	sys.stderr.write ( "\t%s subscribe <addr> <MAC>\n" % (sys.argv[0]) )
+	sys.stderr.write ( "\t%s poweron <addr> <MAC>\n" % (sys.argv[0]) )
+	sys.stderr.write ( "\t%s poweroff <addr> <MAC>\n" % (sys.argv[0]) )
 	sys.stderr.write ( "\t%s listen\n" % (sys.argv[0]) )
 	sys.exit ( 1 )
 
@@ -211,6 +214,7 @@ class orviboS20:
 #				':'.join ( [ "%02x" % x for x in resp['detail']['dstmac'] ] )
 				[ x for x in resp['detail']['dstmac'] ]
 			]
+		time.sleep ( 0.01 )	# need a delay >6ms to be reliable - comands before that may be ignored
 		return resp
 
 	def _subscribeifneeded ( self, ip, mac ):
