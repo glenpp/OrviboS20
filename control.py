@@ -66,6 +66,13 @@ class orviboS20:
 	def _settimeout ( self, timeout = None ):
 		self.sock.settimeout ( timeout )	# seconds - in reality << 1 is needed, None = blocking (wait forever)
 
+	# takes payload excluding first 4 (magic, size) bytes
+	def _sendpacket ( self, payload, ip ):
+		data = [ 0x68, 0x64, 0x00, len(payload)+4 ]
+		data.extend ( payload )
+		print data
+		self.sock.sendto ( ''.join([ struct.pack ( 'B', x ) for x in data ]), ( ip, 10000 ) )
+
 	def _listendiscover ( self ):
 		status = {
 				'exit': True,
@@ -114,9 +121,9 @@ class orviboS20:
 				print "padding: %s" % ':'.join( [ '%02x' % c for c in status['detail']['srcmac'] ] )
 				status['detail']['soc'] = data[31:37]
 				print "soc: %s" % status['detail']['soc']
-				status['detail']['timer'] = struct.unpack ( 'I', data[37:41] )
+				status['detail']['timer'] = struct.unpack ( 'I', data[37:41] )[0]
 				print "1900+sec: %d" % status['detail']['timer']
-				status['state'] = struct.unpack ( 'B', data[41] )
+				status['state'] = struct.unpack ( 'B', data[41] )[0]
 				print "state: %d" % status['state']
 			elif status['detail']['length'] == 24 and status['detail']['commandid'] == 0x636c:
 				# returned subscription TODO separate this - we should only be looking for subscription related stuff after and not tricked by other (discovery) stuff
@@ -161,8 +168,13 @@ class orviboS20:
 	def discover ( self, ip, mac ):
 		self._settimeout ( 2 )
 		self.exitontimeout = True
-		macasbin = ''.join ( [ struct.pack ( 'B', int(x,16) ) for x in mac.split ( ':' ) ] )
-		self.sock.sendto ( 'hd\x00\x12\x71\x67'+macasbin+'      ' , ( ip, 10000 ) )
+#		macasbin = ''.join ( [ struct.pack ( 'B', int(x,16) ) for x in mac.split ( ':' ) ] )
+#		self.sock.sendto ( 'hd\x00\x12\x71\x67'+macasbin+'      ' , ( ip, 10000 ) )
+		data = [ 0x71, 0x67 ]
+		data.extend ( [ int(x,16) for x in mac.split ( ':' ) ] )
+		data.extend ( [ 0x20, 0x20, 0x20, 0x20, 0x20, 0x20 ] )
+		self._sendpacket ( data, ip )
+
 		data = []
 		while True:
 			resp = self._listendiscover ()
@@ -172,7 +184,8 @@ class orviboS20:
 	def globaldiscover ( self, ip ):
 		self._settimeout ( 2 )
 		self.exitontimeout = True
-		self.sock.sendto ( 'hd\x00\x06\x71\x61' , ( ip, 10000 ) )
+#		self.sock.sendto ( 'hd\x00\x06\x71\x61' , ( ip, 10000 ) )
+		self._sendpacket ( [ 0x71, 0x61 ], ip )
 		data = []
 		while True:
 			resp = self._listendiscover ()
@@ -182,11 +195,22 @@ class orviboS20:
 	def subscribe ( self, ip, mac ):
 		self._settimeout ( 2 )
 		self.exitontimeout = True
-		macasbin = ''.join ( [ struct.pack ( 'B', int(x,16) ) for x in mac.split ( ':' ) ] )
-		macasbinr = ''.join ( reversed ( [ struct.pack ( 'B', int(x,16) ) for x in mac.split ( ':' ) ] ) )
-		self.sock.sendto ( '\x68\x64\x00\x1e\x63\x6c'+macasbin+'      '+macasbinr+'      ' , ( ip, 10000 ) )
+#		macasbin = ''.join ( [ struct.pack ( 'B', int(x,16) ) for x in mac.split ( ':' ) ] )
+#		macasbinr = ''.join ( reversed ( [ struct.pack ( 'B', int(x,16) ) for x in mac.split ( ':' ) ] ) )
+#		self.sock.sendto ( '\x68\x64\x00\x1e\x63\x6c'+macasbin+'      '+macasbinr+'      ' , ( ip, 10000 ) )
+		data = [ 0x63, 0x6c ]
+		data.extend ( [ int(x,16) for x in mac.split ( ':' ) ] )
+		data.extend ( [ 0x20, 0x20, 0x20, 0x20, 0x20, 0x20 ] )
+		data.extend ( [ int(x,16) for x in reversed ( mac.split ( ':' ) ) ] )
+		data.extend ( [ 0x20, 0x20, 0x20, 0x20, 0x20, 0x20 ] )
+		self._sendpacket ( data, ip )
 		resp = self._listendiscover ()
-		self.subscribed = [ resp['address'], ''.join ( [ struct.pack ( 'B', x ) for x in resp['detail']['dstmac'] ] ) ]
+		self.subscribed = [
+				resp['address'],
+				''.join ( [ struct.pack ( 'B', x ) for x in resp['detail']['dstmac'] ] ),
+#				':'.join ( [ "%02x" % x for x in resp['detail']['dstmac'] ] )
+				[ x for x in resp['detail']['dstmac'] ]
+			]
 		return resp
 
 	def _subscribeifneeded ( self, ip, mac ):
@@ -204,7 +228,10 @@ class orviboS20:
 	def poweron ( self, ip = None, mac = None ):
 		self._subscribeifneeded ( ip, mac )
 		# we should now be subscribed - go ahead with the power command
-		self.sock.sendto ( '\x68\x64\x00\x17\x64\x63'+self.subscribed[1]+'      \x00\x00\x00\x00\x01', ( self.subscribed[0], 10000 ) )
+		data = [ 0x64, 0x63 ]
+		data.extend ( self.subscribed[2] )
+		data.extend ( [ 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x00, 0x00, 0x00, 0x00, 0x01 ] )
+		self._sendpacket ( data, self.subscribed[0] )
 		resp = self._listendiscover ()
 		pprint.pprint ( resp )
 		return resp
@@ -212,7 +239,10 @@ class orviboS20:
 	def poweroff ( self, ip = None, mac = None ):
 		self._subscribeifneeded ( ip, mac )
 		# we should now be subscribed - go ahead with the power command
-		self.sock.sendto ( '\x68\x64\x00\x17\x64\x63'+self.subscribed[1]+'      \x00\x00\x00\x00\x00', ( self.subscribed[0], 10000 ) )
+		data = [ 0x64, 0x63 ]
+		data.extend ( self.subscribed[2] )
+		data.extend ( [ 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x00, 0x00, 0x00, 0x00, 0x00 ] )
+		self._sendpacket ( data, self.subscribed[0] )
 		resp = self._listendiscover ()
 		pprint.pprint ( resp )
 		return resp
