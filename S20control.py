@@ -43,7 +43,8 @@ def usage():
 	sys.stderr.write ( "\t\t[ requires rapid flahsing blue / solid red (unconnected/connected) mode ]\n" )
 	sys.stderr.write ( "\t%s discover <broadcast addr> <MAC>\n" % (sys.argv[0]) )
 	sys.stderr.write ( "\t%s globaldiscover <broadcast addr>\n" % (sys.argv[0]) )
-	sys.stderr.write ( "\t%s subscribe <addr> <MAC>\n" % (sys.argv[0]) )
+	sys.stderr.write ( "\t%s _subscribe <addr> <MAC>\n" % (sys.argv[0]) )
+	sys.stderr.write ( "\t%s gestate <addr> <MAC>\n" % (sys.argv[0]) )
 	sys.stderr.write ( "\t%s poweron <addr> <MAC>\n" % (sys.argv[0]) )
 	sys.stderr.write ( "\t%s poweroff <addr> <MAC>\n" % (sys.argv[0]) )
 	sys.stderr.write ( "\t%s listen\n" % (sys.argv[0]) )
@@ -55,7 +56,7 @@ if len ( sys.argv ) >= 2:
 		if len ( sys.argv ) != 4: usage()
 		ip = sys.argv[2]	# barodcast address to use
 		wlan = sys.argv[3]
-	elif command in [ 'discover', 'subscribe', 'poweron', 'poweroff' ]:
+	elif command in [ 'discover', '_subscribe', 'getstate', 'poweron', 'poweroff' ]:
 		if len ( sys.argv ) != 4: usage()
 		ip = sys.argv[2]	# barodcast address to use
 		mac = sys.argv[3]
@@ -64,6 +65,8 @@ if len ( sys.argv ) >= 2:
 		ip = sys.argv[2]	# barodcast address to use
 	elif command == 'listen':
 		if len ( sys.argv ) != 2: usage()
+	else:
+		usage()
 else:
 	usage()
 
@@ -93,7 +96,7 @@ class orviboS20:
 	def _sendpacket ( self, payload, ip ):
 		data = [ 0x68, 0x64, 0x00, len(payload)+4 ]
 		data.extend ( payload )
-		print data
+#		print data
 		self.sock.sendto ( ''.join([ struct.pack ( 'B', x ) for x in data ]), ( ip, 10000 ) )
 
 	def _listendiscover ( self ):
@@ -110,28 +113,28 @@ class orviboS20:
 			status['address'],status['port'] = addr
 			status['detail']['length'] = struct.unpack ( '>H', data[2:4] )[0]
 			status['detail']['commandid'] = struct.unpack ( '>H', data[4:6] )[0]
-			print "Length: %d" % status['detail']['length']
-			print "commandid: 0x%04x" % status['detail']['commandid']
+#			print "Length: %d" % status['detail']['length']
+#			print "commandid: 0x%04x" % status['detail']['commandid']
 			# then based on the lenth / command we can expect different stuff
 			if status['detail']['length'] == 6 and status['detail']['commandid'] == 0x7161:
 				# already got everything
 				# global discovery - we probably sent this
-				print "command: Global Discovery"
+#				print "command: Global Discovery"
 				status['command'] = 'Global Discovery'
 				status['exit'] = False	# expect more after this
 			elif status['detail']['length'] == 18 and status['detail']['commandid'] == 0x7167:
 				# discovery - we probably sent this
-				print "command: Discovery"
+#				print "command: Discovery"
 				status['command'] = 'Discovery'
 				status['exit'] = False	# expect more after this
 				# get remaining stuff
 				status['detail']['dstmac'] = struct.unpack ( '6B', data[6:12] )
 				status['detail']['srcmac'] = struct.unpack ( '6B', data[12:18] )
-				print "mac: %s" % ':'.join( [ '%02x' % c for c in status['detail']['dstmac']  ] )
-				print "padding: %s" % ':'.join( [ '%02x' % c for c in status['detail']['srcmac'] ] )
+#				print "mac: %s" % ':'.join( [ '%02x' % c for c in status['detail']['dstmac']  ] )
+#				print "padding: %s" % ':'.join( [ '%02x' % c for c in status['detail']['srcmac'] ] )
 			elif status['detail']['length'] == 42 and ( status['detail']['commandid'] == 0x7161 or status['detail']['commandid'] == 0x7167 ):
 				# returned discovery
-				print "command: Discovery (response)"
+#				print "command: Discovery (response)"
 				status['command'] = 'Discovery (response)'
 				# get remaining stuff
 				zero = struct.unpack ( '>B', data[6:7] )[0]
@@ -140,31 +143,31 @@ class orviboS20:
 				status['detail']['srcmac'] = struct.unpack ( '6B', data[13:19] )
 				dstmacr = struct.unpack ( '6B', data[19:25] )
 				srcmacr = struct.unpack ( '6B', data[25:31] )
-				print "mac: %s" % ':'.join( [ '%02x' % c for c in status['detail']['dstmac']  ] )
-				print "padding: %s" % ':'.join( [ '%02x' % c for c in status['detail']['srcmac'] ] )
+#				print "mac: %s" % ':'.join( [ '%02x' % c for c in status['detail']['dstmac']  ] )
+#				print "padding: %s" % ':'.join( [ '%02x' % c for c in status['detail']['srcmac'] ] )
 				status['detail']['soc'] = data[31:37]
-				print "soc: %s" % status['detail']['soc']
+#				print "soc: %s" % status['detail']['soc']
 				status['detail']['timer'] = struct.unpack ( 'I', data[37:41] )[0]
-				print "1900+sec: %d" % status['detail']['timer']
+#				print "1900+sec: %d" % status['detail']['timer']
 				status['state'] = struct.unpack ( 'B', data[41] )[0]
-				print "state: %d" % status['state']
+#				print "state: %d" % status['state']
 			elif status['detail']['length'] == 24 and status['detail']['commandid'] == 0x636c:
 				# returned subscription TODO separate this - we should only be looking for subscription related stuff after and not tricked by other (discovery) stuff
 				status['detail']['dstmac'] = struct.unpack ( '6B', data[6:12] )
 				status['detail']['srcmac'] = struct.unpack ( '6B', data[12:18] )
-				print "mac: %s" % ':'.join( [ '%02x' % c for c in status['detail']['dstmac']  ] )
-				print "padding: %s" % ':'.join( [ '%02x' % c for c in status['detail']['srcmac'] ] )
+#				print "mac: %s" % ':'.join( [ '%02x' % c for c in status['detail']['dstmac']  ] )
+#				print "padding: %s" % ':'.join( [ '%02x' % c for c in status['detail']['srcmac'] ] )
 				zero = struct.unpack ( '>5B', data[18:23] )
 				for i in range(5):
 					if zero[i] != 0: sys.stderr.write ( "WARNING: zero[%d] = 0x%02x\n" % (i,zero) )
 				status['state'] = struct.unpack ( 'B', data[23] )[0]
-				print "state: %d" % status['state']
+#				print "state: %d" % status['state']
 			elif status['detail']['length'] == 23 and status['detail']['commandid'] == 0x6463:
 				# returned power on/off TODO separate this - we should only be looking for subscription related stuff after and not tricked by other (discovery) stuff
 				status['detail']['dstmac'] = struct.unpack ( '6B', data[6:12] )
 				status['detail']['srcmac'] = struct.unpack ( '6B', data[12:18] )
-				print "mac: %s" % ':'.join( [ '%02x' % c for c in status['detail']['dstmac']  ] )
-				print "padding: %s" % ':'.join( [ '%02x' % c for c in status['detail']['srcmac'] ] )
+#				print "mac: %s" % ':'.join( [ '%02x' % c for c in status['detail']['dstmac']  ] )
+#				print "padding: %s" % ':'.join( [ '%02x' % c for c in status['detail']['srcmac'] ] )
 				zero = struct.unpack ( '>5B', data[18:23] )
 				for i in range(5):
 					if zero[i] != 0: sys.stderr.write ( "WARNING: zero[%d] = 0x%02x\n" % (i,zero) )
@@ -197,7 +200,6 @@ class orviboS20:
 		data.extend ( [ int(x,16) for x in mac.split ( ':' ) ] )
 		data.extend ( [ 0x20, 0x20, 0x20, 0x20, 0x20, 0x20 ] )
 		self._sendpacket ( data, ip )
-
 		data = []
 		while True:
 			resp = self._listendiscover ()
@@ -254,7 +256,7 @@ class orviboS20:
 		data.extend ( [ 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x00, 0x00, 0x00, 0x00, 0x01 ] )
 		self._sendpacket ( data, self.subscribed[0] )
 		resp = self._listendiscover ()
-		pprint.pprint ( resp )
+#		pprint.pprint ( resp )
 		return resp
 
 	def poweroff ( self, ip = None, mac = None ):
@@ -265,7 +267,7 @@ class orviboS20:
 		data.extend ( [ 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x00, 0x00, 0x00, 0x00, 0x00 ] )
 		self._sendpacket ( data, self.subscribed[0] )
 		resp = self._listendiscover ()
-		pprint.pprint ( resp )
+#		pprint.pprint ( resp )
 		return resp
 
 
@@ -319,14 +321,17 @@ elif command == 'globaldiscover':
 	control = orviboS20 ()
 	resp = control.globaldiscover ( ip )
 	pprint.pprint ( resp )
-elif command == 'subscribe':
+elif command == '_subscribe':
 	control = orviboS20 ()
 	resp = control.subscribe ( ip, mac )
 	pprint.pprint ( resp )
+elif command == 'getstate':
+	control = orviboS20 ()
+	resp = control.subscribe ( ip, mac )
+	sys.exit ( 0 if resp['state'] == 1 else 1 )
 elif command == 'poweron':
 	control = orviboS20 ()
 	control.poweron ( ip, mac )
-
 elif command == 'poweroff':
 	control = orviboS20 ()
 	control.poweroff ( ip, mac )
