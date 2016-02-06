@@ -73,10 +73,17 @@ else:
 
 
 
-# decifer returned / broadcast discovery packets
+# main class for Orvibo S20
 
 class orviboS20:
 	port = 10000
+	class UnknownPacket(Exception):
+		def __init__ (self,value):
+			self.value = value
+		def __str__ (self):
+			return repr(self.value)
+
+
 	def __init__ ( self ):
 		self.subscribed = None
 		self.exitontimeout = False
@@ -176,12 +183,12 @@ class orviboS20:
 					if zero[i] != 0: sys.stderr.write ( "WARNING: zero[%d] = 0x%02x\n" % (i,zero[i]) )
 				# previous info said 4 bytes zero, 5th state, but on my S20 this is always zero, so assume as above 5 bytes zero, no state
 			else:
-				raise RuntimeError
+				raise UnknownPacket
 		except socket.timeout:
 			# if we are doing timeouts then just catch it - it's probably for a reason
 			status['timeout'] = True
 			if self.exitontimeout: status['exit'] = True
-		except RuntimeError as e:	# TODO this should be more specific to avoid trapping syntax errors
+		except UnknownPacket as e:	# TODO this should be more specific to avoid trapping syntax errors
 			sys.stderr.write ( "Error: %s:\n" % e )
 			sys.stderr.write ( "Unknown packet:\n" )
 			for c in struct.unpack ( '%dB' % len(data), data ):
