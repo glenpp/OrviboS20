@@ -109,6 +109,9 @@ class orviboS20:
 		# we need to run and catch timeouts
 		try:
 			data,addr = self.sock.recvfrom ( 1024 )
+			# check magic for a valid packet
+			if data[0:2] != 'hd':
+				return None
 			# decode
 			status['address'],status['port'] = addr
 			status['detail']['length'] = struct.unpack ( '>H', data[2:4] )[0]
@@ -170,15 +173,16 @@ class orviboS20:
 #				print "padding: %s" % ':'.join( [ '%02x' % c for c in status['detail']['srcmac'] ] )
 				zero = struct.unpack ( '>5B', data[18:23] )
 				for i in range(5):
-					if zero[i] != 0: sys.stderr.write ( "WARNING: zero[%d] = 0x%02x\n" % (i,zero) )
+					if zero[i] != 0: sys.stderr.write ( "WARNING: zero[%d] = 0x%02x\n" % (i,zero[i]) )
 				# previous info said 4 bytes zero, 5th state, but on my S20 this is always zero, so assume as above 5 bytes zero, no state
 			else:
-				raise
+				raise RuntimeError
 		except socket.timeout:
 			# if we are doing timeouts then just catch it - it's probably for a reason
 			status['timeout'] = True
 			if self.exitontimeout: status['exit'] = True
-		except:	# TODO this should be more specific to avoid trapping syntax errors
+		except RuntimeError as e:	# TODO this should be more specific to avoid trapping syntax errors
+			sys.stderr.write ( "Error: %s:\n" % e )
 			sys.stderr.write ( "Unknown packet:\n" )
 			for c in struct.unpack ( '%dB' % len(data), data ):
 				sys.stderr.write ( "* %02x \"%s\"\n" % (c,chr(c)) )
