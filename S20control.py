@@ -148,7 +148,7 @@ class orviboS20:
 				status['command'] = 'Discovery (response)'
 				# get remaining stuff
 				zero = struct.unpack ( '>B', data[6:7] )[0]
-				if zero != 0: sys.stderr.write ( "WARNING: zero = 0x%02x\n" % zero )
+				if zero != 0: sys.stderr.write ( "WARNING: [0] zero = 0x%02x\n" % zero )
 				status['detail']['dstmac'] = struct.unpack ( '6B', data[7:13] )
 				status['detail']['srcmac'] = struct.unpack ( '6B', data[13:19] )
 				dstmacr = struct.unpack ( '6B', data[19:25] )
@@ -169,7 +169,7 @@ class orviboS20:
 #				print "padding: %s" % ':'.join( [ '%02x' % c for c in status['detail']['srcmac'] ] )
 				zero = struct.unpack ( '>5B', data[18:23] )
 				for i in range(5):
-					if zero[i] != 0: sys.stderr.write ( "WARNING: zero[%d] = 0x%02x\n" % (i,zero) )
+					if zero[i] != 0: sys.stderr.write ( "WARNING: [1] zero[%d] = 0x%02x\n" % (i,zero) )
 				status['state'] = struct.unpack ( 'B', data[23] )[0]
 #				print "state: %d" % status['state']
 			elif status['detail']['length'] == 23 and status['detail']['commandid'] == 0x6463:
@@ -178,9 +178,10 @@ class orviboS20:
 				status['detail']['srcmac'] = struct.unpack ( '6B', data[12:18] )
 #				print "mac: %s" % ':'.join( [ '%02x' % c for c in status['detail']['dstmac']  ] )
 #				print "padding: %s" % ':'.join( [ '%02x' % c for c in status['detail']['srcmac'] ] )
-				zero = struct.unpack ( '>5B', data[18:23] )
-				for i in range(5):
-					if zero[i] != 0: sys.stderr.write ( "WARNING: zero[%d] = 0x%02x\n" % (i,zero[i]) )
+				status['detail']['peercount'] = struct.unpack ( 'B', data[18] )	# number of peers on the network
+				zero = struct.unpack ( '>4B', data[19:23] )
+				for i in range(4):
+					if zero[i] != 0: sys.stderr.write ( "WARNING: [2] zero[%d] = 0x%02x\n" % (i,zero[i]) )
 				# previous info said 4 bytes zero, 5th state, but on my S20 this is always zero, so assume as above 5 bytes zero, no state
 			else:
 				raise UnknownPacket
@@ -188,7 +189,7 @@ class orviboS20:
 			# if we are doing timeouts then just catch it - it's probably for a reason
 			status['timeout'] = True
 			if self.exitontimeout: status['exit'] = True
-		except UnknownPacket as e:	# TODO this should be more specific to avoid trapping syntax errors
+		except UnknownPacket, e:	# TODO this should be more specific to avoid trapping syntax errors
 			sys.stderr.write ( "Error: %s:\n" % e )
 			sys.stderr.write ( "Unknown packet:\n" )
 			for c in struct.unpack ( '%dB' % len(data), data ):
