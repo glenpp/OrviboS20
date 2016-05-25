@@ -195,6 +195,13 @@ class orviboS20:
 			for c in struct.unpack ( '%dB' % len(data), data ):
 				sys.stderr.write ( "* %02x \"%s\"\n" % (c,chr(c)) )
 
+		# fill in text MAC
+		if 'detail' in status:
+			if 'dstmac' in status['detail']:
+				status['dstmachex'] = ':'.join( [ '%02x' % c for c in status['detail']['dstmac']  ] )
+			if 'srcmac' in status['detail']:
+				status['srcmachex'] = ':'.join( [ '%02x' % c for c in status['detail']['srcmac']  ] )
+
 		return status
 
 
