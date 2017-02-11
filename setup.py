@@ -24,4 +24,9 @@ setup(
         "Topic :: Utilities",
         "License :: GNU License",
     ],
+    entry_points = {
+        'console_scripts': [
+            'S20control = S20control.S20control:main',                  
+            ],              
+        },
 )

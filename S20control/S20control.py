@@ -50,29 +50,6 @@ def usage():
 	sys.stderr.write ( "\t%s listen\n" % (sys.argv[0]) )
 	sys.exit ( 1 )
 
-if __name__ == "__main__":
-    if len ( sys.argv ) >= 2:
-            command = sys.argv[1]
-            if command == 'connect':
-                    if len ( sys.argv ) != 4: usage()
-                    ip = sys.argv[2]	# barodcast address to use
-                    wlan = sys.argv[3]
-            elif command in [ 'discover', '_subscribe', 'getstate', 'poweron', 'poweroff' ]:
-                    if len ( sys.argv ) != 4: usage()
-                    ip = sys.argv[2]	# barodcast address to use
-                    mac = sys.argv[3]
-            elif command == 'globaldiscover':
-                    if len ( sys.argv ) != 3: usage()
-                    ip = sys.argv[2]	# barodcast address to use
-            elif command == 'listen':
-                    if len ( sys.argv ) != 2: usage()
-            else:
-                    usage()
-    else:
-            usage()
-
-
-
 
 # main class for Orvibo S20
 
@@ -289,7 +266,27 @@ class orviboS20:
 
 
 
-if __name__ == "__main__":
+def main():
+    if len ( sys.argv ) >= 2:
+            command = sys.argv[1]
+            if command == 'connect':
+                    if len ( sys.argv ) != 4: usage()
+                    ip = sys.argv[2]	# barodcast address to use
+                    wlan = sys.argv[3]
+            elif command in [ 'discover', '_subscribe', 'getstate', 'poweron', 'poweroff' ]:
+                    if len ( sys.argv ) != 4: usage()
+                    ip = sys.argv[2]	# barodcast address to use
+                    mac = sys.argv[3]
+            elif command == 'globaldiscover':
+                    if len ( sys.argv ) != 3: usage()
+                    ip = sys.argv[2]	# barodcast address to use
+            elif command == 'listen':
+                    if len ( sys.argv ) != 2: usage()
+            else:
+                    usage()
+    else:
+            usage()
+    
     if command == 'connect':
             sock = socket.socket (
                             socket.AF_INET,	# Internet
@@ -351,9 +348,11 @@ if __name__ == "__main__":
     # TODO TABLE DATA
     # TODO SOCKET DATA
     # TODO Timing DATA
+    return
 
 
-
+if __name__ == "__main__":
+    main()
 
 
 
