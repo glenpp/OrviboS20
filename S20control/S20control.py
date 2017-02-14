@@ -73,6 +73,11 @@ class orviboS20:
 			)
 		self.sock.setsockopt ( socket.SOL_SOCKET, socket.SO_BROADCAST, 1 )	# https://stackoverflow.com/questions/11457676/python-socket-error-errno-13-permission-denied
 		self.sock.bind ( ('',self.port) )
+        def close():
+            try:
+                self.sock.close()
+            except Exception as e:
+                print e
 
 	def _settimeout ( self, timeout = None ):
 		self.sock.settimeout ( timeout )	# seconds - in reality << 1 is needed, None = blocking (wait forever)
