@@ -11,7 +11,7 @@ def read(fname):
 setup(
     name = "S20Control",
     version = "0.1",
-    author = "Guy Sheffer",
+    author = "Glen Pitt-Pladdy / Guy Sheffer",
     author_email = "glenpp@users.noreply.github.com",
     description = ("Python management utility for Orvibo S20 WiFi Plug"),
     license = "GNU",
