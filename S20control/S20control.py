@@ -50,28 +50,6 @@ def usage():
 	sys.stderr.write ( "\t%s listen\n" % (sys.argv[0]) )
 	sys.exit ( 1 )
 
-if len ( sys.argv ) >= 2:
-	command = sys.argv[1]
-	if command == 'connect':
-		if len ( sys.argv ) != 4: usage()
-		ip = sys.argv[2]	# barodcast address to use
-		wlan = sys.argv[3]
-	elif command in [ 'discover', '_subscribe', 'getstate', 'poweron', 'poweroff' ]:
-		if len ( sys.argv ) != 4: usage()
-		ip = sys.argv[2]	# barodcast address to use
-		mac = sys.argv[3]
-	elif command == 'globaldiscover':
-		if len ( sys.argv ) != 3: usage()
-		ip = sys.argv[2]	# barodcast address to use
-	elif command == 'listen':
-		if len ( sys.argv ) != 2: usage()
-	else:
-		usage()
-else:
-	usage()
-
-
-
 
 # main class for Orvibo S20
 
@@ -95,6 +73,11 @@ class orviboS20:
 			)
 		self.sock.setsockopt ( socket.SOL_SOCKET, socket.SO_BROADCAST, 1 )	# https://stackoverflow.com/questions/11457676/python-socket-error-errno-13-permission-denied
 		self.sock.bind ( ('',self.port) )
+        def close():
+            try:
+                self.sock.close()
+            except Exception as e:
+                print e
 
 	def _settimeout ( self, timeout = None ):
 		self.sock.settimeout ( timeout )	# seconds - in reality << 1 is needed, None = blocking (wait forever)
@@ -295,71 +278,93 @@ class orviboS20:
 
 
 
+def main():
+    if len ( sys.argv ) >= 2:
+            command = sys.argv[1]
+            if command == 'connect':
+                    if len ( sys.argv ) != 4: usage()
+                    ip = sys.argv[2]	# barodcast address to use
+                    wlan = sys.argv[3]
+            elif command in [ 'discover', '_subscribe', 'getstate', 'poweron', 'poweroff' ]:
+                    if len ( sys.argv ) != 4: usage()
+                    ip = sys.argv[2]	# barodcast address to use
+                    mac = sys.argv[3]
+            elif command == 'globaldiscover':
+                    if len ( sys.argv ) != 3: usage()
+                    ip = sys.argv[2]	# barodcast address to use
+            elif command == 'listen':
+                    if len ( sys.argv ) != 2: usage()
+            else:
+                    usage()
+    else:
+            usage()
+    
+    if command == 'connect':
+            sock = socket.socket (
+                            socket.AF_INET,	# Internet
+                            socket.SOCK_DGRAM	# UDP
+                    )
+            sock.setsockopt ( socket.SOL_SOCKET, socket.SO_BROADCAST, 1 )	# https://stackoverflow.com/questions/11457676/python-socket-error-errno-13-permission-denied
+            sock.settimeout ( 2 )	# seconds - in reality << 1 is needed
 
-if command == 'connect':
-	sock = socket.socket (
-			socket.AF_INET,	# Internet
-			socket.SOCK_DGRAM	# UDP
-		)
-	sock.setsockopt ( socket.SOL_SOCKET, socket.SO_BROADCAST, 1 )	# https://stackoverflow.com/questions/11457676/python-socket-error-errno-13-permission-denied
-	sock.settimeout ( 2 )	# seconds - in reality << 1 is needed
-
-	# connect to network
-	sock.sendto ( 'HF-A11ASSISTHREAD' , (ip,48899) )
-	data,addr = sock.recvfrom ( 1024 )
-	socketip,socketmac,sockethost = data.split ( ',' )
-	print socketip,socketmac,sockethost
-	sock.sendto ( '+ok' , (ip,48899) )	# ack
-	sock.sendto ( "AT+WSSSID=%s\r" % wlan, (ip,48899) )
-	data,addr = sock.recvfrom ( 1024 )
-	if data.rstrip() != '+ok':
-		sys.exit ( "FATAL - got \"%s\" in response to set SSID\n" % data.rstrip() )
-	key = raw_input (  "Enter WIFI key for \"%s\": " % wlan )
-	sock.sendto ( "AT+WSKEY=WPA2PSK,AES,%s\r" % key, (ip,48899) )
-	data,addr = sock.recvfrom ( 1024 )
-	if data.rstrip() != '+ok':
-		sys.exit ( "FATAL - got \"%s\" in response to set KEY\n" % data.rstrip() )
-	sock.sendto ( "AT+WMODE=STA\r" , (ip,48899) )
-	data,addr = sock.recvfrom ( 1024 )
-	if data.rstrip() != '+ok':
-		sys.exit ( "FATAL - got \"%s\" in response to set MODE\n" % data.rstrip() )
-	sock.sendto ( "AT+Z\r" , (ip,48899) )	# no return
-	print "connect complete to \"%s\"" % wlan
-elif command == 'listen':	# listen for stuff sent round
-	print "listen"
-	control = orviboS20 ()
-	while True:
-		resp = control.listen ()
-		pprint.pprint ( resp )
-		if resp['exit']: break
-elif command == 'discover':
-	control = orviboS20 ()
-	resp = control.discover ( ip, mac )
-	pprint.pprint ( resp )
-elif command == 'globaldiscover':
-	control = orviboS20 ()
-	resp = control.globaldiscover ( ip )
-	pprint.pprint ( resp )
-elif command == '_subscribe':
-	control = orviboS20 ()
-	resp = control.subscribe ( ip, mac )
-	pprint.pprint ( resp )
-elif command == 'getstate':
-	control = orviboS20 ()
-	resp = control.subscribe ( ip, mac )
-	sys.exit ( 0 if resp['state'] == 1 else 1 )
-elif command == 'poweron':
-	control = orviboS20 ()
-	control.poweron ( ip, mac )
-elif command == 'poweroff':
-	control = orviboS20 ()
-	control.poweroff ( ip, mac )
-# TODO TABLE DATA
-# TODO SOCKET DATA
-# TODO Timing DATA
+            # connect to network
+            sock.sendto ( 'HF-A11ASSISTHREAD' , (ip,48899) )
+            data,addr = sock.recvfrom ( 1024 )
+            socketip,socketmac,sockethost = data.split ( ',' )
+            print socketip,socketmac,sockethost
+            sock.sendto ( '+ok' , (ip,48899) )	# ack
+            sock.sendto ( "AT+WSSSID=%s\r" % wlan, (ip,48899) )
+            data,addr = sock.recvfrom ( 1024 )
+            if data.rstrip() != '+ok':
+                    sys.exit ( "FATAL - got \"%s\" in response to set SSID\n" % data.rstrip() )
+            key = raw_input (  "Enter WIFI key for \"%s\": " % wlan )
+            sock.sendto ( "AT+WSKEY=WPA2PSK,AES,%s\r" % key, (ip,48899) )
+            data,addr = sock.recvfrom ( 1024 )
+            if data.rstrip() != '+ok':
+                    sys.exit ( "FATAL - got \"%s\" in response to set KEY\n" % data.rstrip() )
+            sock.sendto ( "AT+WMODE=STA\r" , (ip,48899) )
+            data,addr = sock.recvfrom ( 1024 )
+            if data.rstrip() != '+ok':
+                    sys.exit ( "FATAL - got \"%s\" in response to set MODE\n" % data.rstrip() )
+            sock.sendto ( "AT+Z\r" , (ip,48899) )	# no return
+            print "connect complete to \"%s\"" % wlan
+    elif command == 'listen':	# listen for stuff sent round
+            print "listen"
+            control = orviboS20 ()
+            while True:
+                    resp = control.listen ()
+                    pprint.pprint ( resp )
+                    if resp['exit']: break
+    elif command == 'discover':
+            control = orviboS20 ()
+            resp = control.discover ( ip, mac )
+            pprint.pprint ( resp )
+    elif command == 'globaldiscover':
+            control = orviboS20 ()
+            resp = control.globaldiscover ( ip )
+            pprint.pprint ( resp )
+    elif command == '_subscribe':
+            control = orviboS20 ()
+            resp = control.subscribe ( ip, mac )
+            pprint.pprint ( resp )
+    elif command == 'getstate':
+            control = orviboS20 ()
+            resp = control.subscribe ( ip, mac )
+            sys.exit ( 0 if resp['state'] == 1 else 1 )
+    elif command == 'poweron':
+            control = orviboS20 ()
+            control.poweron ( ip, mac )
+    elif command == 'poweroff':
+            control = orviboS20 ()
+            control.poweroff ( ip, mac )
+    # TODO TABLE DATA
+    # TODO SOCKET DATA
+    # TODO Timing DATA
+    return
 
 
-
+if __name__ == "__main__":
+    main()
 
 
 
