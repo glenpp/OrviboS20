@@ -44,7 +44,7 @@ def usage():
 	sys.stderr.write ( "\t%s discover <broadcast addr> <MAC>\n" % (sys.argv[0]) )
 	sys.stderr.write ( "\t%s globaldiscover <broadcast addr>\n" % (sys.argv[0]) )
 	sys.stderr.write ( "\t%s _subscribe <addr> <MAC>\n" % (sys.argv[0]) )
-	sys.stderr.write ( "\t%s gestate <addr> <MAC>\n" % (sys.argv[0]) )
+	sys.stderr.write ( "\t%s getstate <addr> <MAC>\n" % (sys.argv[0]) )
 	sys.stderr.write ( "\t%s poweron <addr> <MAC>\n" % (sys.argv[0]) )
 	sys.stderr.write ( "\t%s poweroff <addr> <MAC>\n" % (sys.argv[0]) )
 	sys.stderr.write ( "\t%s listen\n" % (sys.argv[0]) )
@@ -229,6 +229,8 @@ class orviboS20:
 		data.extend ( [ 0x20, 0x20, 0x20, 0x20, 0x20, 0x20 ] )
 		self._sendpacket ( data, ip )
 		resp = self._listendiscover ()
+                if 'address' not in resp:
+                    return None
 		self.subscribed = [
 				resp['address'],
 				''.join ( [ struct.pack ( 'B', x ) for x in resp['detail']['dstmac'] ] ),
@@ -249,7 +251,7 @@ class orviboS20:
 				# new subscription / re-subscription
 				self.subscribe ( ip, mac )
 				if self.subscribed == None or self.subscribed[1] != macasbin:
-					raise	# something failed
+					raise Exception('self.subscribe failed: %s' % self.subscribed)  # something failed
 	def poweron ( self, ip = None, mac = None ):
 		self._subscribeifneeded ( ip, mac )
 		# we should now be subscribed - go ahead with the power command
@@ -350,6 +352,8 @@ def main():
     elif command == 'getstate':
             control = orviboS20 ()
             resp = control.subscribe ( ip, mac )
+            if not resp:
+                sys.exit(100)
             sys.exit ( 0 if resp['state'] == 1 else 1 )
     elif command == 'poweron':
             control = orviboS20 ()
@@ -365,10 +369,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-
-
-
-
-
-
