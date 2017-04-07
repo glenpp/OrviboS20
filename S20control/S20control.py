@@ -24,6 +24,10 @@
 # https://stikonas.eu/wordpress/2015/02/24/reverse-engineering-orvibo-s20-socket/
 # https://wiki.python.org/moin/UdpCommunication
 
+# Thanks for contributions to:
+#	Guy Sheffer - https://github.com/guysoft
+#	alexyr - https://github.com/alexyr
+
 
 
 
