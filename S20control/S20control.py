@@ -54,18 +54,14 @@ def usage():
     sys.exit(1)
 
 
+class UnknownPacket(Exception):
+    pass
+
 class OrviboS20:
     """
     main class for Orvibo S20
     """
     port = 10000
-
-    class UnknownPacket(Exception):
-        def __init__(self, value):
-            self.value = value
-
-        def __str__(self):
-            return repr(self.value)
 
     def __enter__(self):
         return self
