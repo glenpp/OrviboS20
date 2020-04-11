@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python3
 #
 # Copyright (C) 2016  Glen Pitt-Pladdy
 #
@@ -30,7 +30,7 @@
 
 
 
-
+from __future__ import print_function
 import sys
 import pprint
 import socket
@@ -41,16 +41,16 @@ import time
 
 # get args
 def usage():
-    print >>sys.stderr, "Usage:"
-    print >>sys.stderr, "\t%s connect <addr (fast blue broadcast 10.10.100.255)> <wlan ssid>" % (sys.argv[0])
-    print >>sys.stderr, "\t\t[ requires rapid flahsing blue / solid red (unconnected/connected) mode ]"
-    print >>sys.stderr, "\t%s discover <broadcast addr> <MAC>" % (sys.argv[0])
-    print >>sys.stderr, "\t%s globaldiscover <broadcast addr>" % (sys.argv[0])
-    print >>sys.stderr, "\t%s _subscribe <addr> <MAC>" % (sys.argv[0])
-    print >>sys.stderr, "\t%s getstate <addr> <MAC>" % (sys.argv[0])
-    print >>sys.stderr, "\t%s poweron <addr> <MAC>" % (sys.argv[0])
-    print >>sys.stderr, "\t%s poweroff <addr> <MAC>" % (sys.argv[0])
-    print >>sys.stderr, "\t%s listen" % (sys.argv[0])
+    print("Usage:", file=sys.stderr)
+    print("\t%s connect <addr (fast blue broadcast 10.10.100.255)> <wlan ssid>" % (sys.argv[0]), file=sys.stderr)
+    print("\t\t[ requires rapid flahsing blue / solid red (unconnected/connected) mode ]", file=sys.stderr)
+    print("\t%s discover <broadcast addr> <MAC>" % (sys.argv[0]), file=sys.stderr)
+    print("\t%s globaldiscover <broadcast addr>" % (sys.argv[0]), file=sys.stderr)
+    print("\t%s _subscribe <addr> <MAC>" % (sys.argv[0]), file=sys.stderr)
+    print("\t%s getstate <addr> <MAC>" % (sys.argv[0]), file=sys.stderr)
+    print("\t%s poweron <addr> <MAC>" % (sys.argv[0]), file=sys.stderr)
+    print("\t%s poweroff <addr> <MAC>" % (sys.argv[0]), file=sys.stderr)
+    print("\t%s listen" % (sys.argv[0]), file=sys.stderr)
     sys.exit(1)
 
 
@@ -86,7 +86,7 @@ class OrviboS20:
         try:
             self.sock.close()
         except Exception as e:
-            print e
+            print(e)
 
     def _settimeout(self, timeout=None):
         self.sock.settimeout(timeout)  # seconds - in reality << 1 is needed, None = blocking (wait forever)
@@ -96,7 +96,7 @@ class OrviboS20:
         data = [0x68, 0x64, 0x00, len(payload) + 4]
         data.extend(payload)
         # print data
-        self.sock.sendto(''.join([struct.pack('B', x) for x in data]), (ip, 10000))
+        self.sock.sendto(b''.join([struct.pack('B', x) for x in data]), (ip, 10000))
 
     def _listendiscover(self):
         status = {
@@ -110,7 +110,7 @@ class OrviboS20:
         try:
             data, addr = self.sock.recvfrom(1024)
             # check magic for a valid packet
-            if data[0:2] != 'hd':
+            if data[0:2] != b'hd':
                 return None
             # decode
             status['address'], status['port'] = addr
@@ -143,7 +143,7 @@ class OrviboS20:
                 # get remaining stuff
                 zero = struct.unpack('>B', data[6:7])[0]
                 if zero != 0:
-                    print >>sys.stderr, "WARNING: [0] zero = 0x%02x\n" % zero
+                    print("WARNING: [0] zero = 0x%02x\n" % zero, file=sys.stderr)
                 status['detail']['dstmac'] = struct.unpack('6B', data[7:13])
                 status['detail']['srcmac'] = struct.unpack('6B', data[13:19])
                 dstmacr = struct.unpack('6B', data[19:25])
@@ -165,8 +165,8 @@ class OrviboS20:
                 zero = struct.unpack('>5B', data[18:23])
                 for i in range(5):
                     if zero[i] != 0:
-                        print >>sys.stderr, "WARNING: [1] zero[%d] = 0x%02x\n" % (i, zero)
-                status['state'] = struct.unpack('B', data[23])[0]
+                        print("WARNING: [1] zero[%d] = 0x%02x\n" % (i, zero), file=sys.stderr)
+                status['state'] = data[23]
             # print "state: %d" % status['state']
             elif status['detail']['length'] == 23 and status['detail']['commandid'] == 0x6463:
                 # returned power on/off TODO separate this - we should only be looking for subscription related stuff after and not tricked by other (discovery) stuff
@@ -174,11 +174,11 @@ class OrviboS20:
                 status['detail']['srcmac'] = struct.unpack('6B', data[12:18])
                 # print "mac: %s" % ':'.join( [ '%02x' % c for c in status['detail']['dstmac']  ] )
                 # print "padding: %s" % ':'.join( [ '%02x' % c for c in status['detail']['srcmac'] ] )
-                status['detail']['peercount'] = struct.unpack('B', data[18])  # number of peers on the network
+                status['detail']['peercount'] = data[18]  # number of peers on the network
                 zero = struct.unpack('>4B', data[19:23])
                 for i in range(4):
                     if zero[i] != 0:
-                        print >>sys.stderr, "WARNING: [2] zero[%d] = 0x%02x\n" % (i, zero[i])
+                        print("WARNING: [2] zero[%d] = 0x%02x\n" % (i, zero[i]), file=sys.stderr)
                     # previous info said 4 bytes zero, 5th state, but on my S20 this is always zero, so assume as above 5 bytes zero, no state
             else:
                 raise UnknownPacket
@@ -187,11 +187,11 @@ class OrviboS20:
             status['timeout'] = True
             if self.exitontimeout:
                 status['exit'] = True
-        except UnknownPacket, e:  # TODO this should be more specific to avoid trapping syntax errors
-            print >>sys.stderr, "Error: %s:" % e
-            print >>sys.stderr, "Unknown packet:"
+        except UnknownPacket as e:  # TODO this should be more specific to avoid trapping syntax errors
+            print("Error: %s:" % e, file=sys.stderr)
+            print("Unknown packet:", file=sys.stderr)
             for c in struct.unpack('%dB' % len(data), data):
-                print >>sys.stderr, "* %02x \"%s\"\n" % (c, chr(c))
+                print("* %02x \"%s\"\n" % (c, chr(c)), file=sys.stderr)
 
         # fill in text MAC
         if 'detail' in status:
@@ -252,7 +252,7 @@ class OrviboS20:
 
         self.subscribed = [
             resp['address'],
-            ''.join([struct.pack('B', x) for x in resp['detail']['dstmac']]),
+            b''.join([struct.pack('B', x) for x in resp['detail']['dstmac']]),
             # ':'.join ( [ "%02x" % x for x in resp['detail']['dstmac'] ] )
             [x for x in resp['detail']['dstmac']]
         ]
@@ -265,7 +265,7 @@ class OrviboS20:
             pass
         elif ip is not None and mac is not None:
             # subscribe or check existing subscription
-            macasbin = ''.join([struct.pack('B', int(x, 16)) for x in mac.split(':')])
+            macasbin = b''.join([struct.pack('B', int(x, 16)) for x in mac.split(':')])
             if self.subscribed is None or self.subscribed[1] != macasbin:
                 # new subscription / re-subscription
                 self.subscribe(ip, mac)
@@ -333,13 +333,13 @@ def main():
         sock.sendto('HF-A11ASSISTHREAD', (ip, 48899))
         data, addr = sock.recvfrom(1024)
         socketip, socketmac, sockethost = data.split(',')
-        print socketip, socketmac, sockethost
+        print(socketip, socketmac, sockethost)
         sock.sendto('+ok', (ip, 48899))  # ack
         sock.sendto("AT+WSSSID=%s\r" % wlan, (ip, 48899))
         data, addr = sock.recvfrom(1024)
 
         if data.rstrip() != '+ok':
-            print >>sys.stderr, 'FATAL - got "%s" in response to set SSID' % data.rstrip()
+            print('FATAL - got "%s" in response to set SSID' % data.rstrip(), file=sys.stderr)
             sys.exit(1)
 
         key = raw_input('Enter WIFI key for "%s": ' % wlan)
@@ -347,21 +347,21 @@ def main():
         data, addr = sock.recvfrom(1024)
 
         if data.rstrip() != '+ok':
-            print >>sys.stderr, 'FATAL - got "%s" in response to set KEY' % data.rstrip()
+            print('FATAL - got "%s" in response to set KEY' % data.rstrip(), file=sys.stderr)
             sys.exit(1)
 
         sock.sendto("AT+WMODE=STA\r", (ip, 48899))
         data, addr = sock.recvfrom(1024)
 
         if data.rstrip() != '+ok':
-            print >>sys.stderr, 'FATAL - got "%s" in response to set MODE' % data.rstrip()
+            print('FATAL - got "%s" in response to set MODE' % data.rstrip(), file=sys.stderr)
             sys.exit(1)
 
         sock.sendto("AT+Z\r", (ip, 48899))  # no return
-        print "connect complete to \"%s\"" % wlan
+        print("connect complete to \"%s\"" % wlan)
 
     elif command == 'listen':  # listen for stuff sent round
-        print "listen"
+        print("listen")
         with OrviboS20() as control:
             while True:
                 resp = control.listen()
