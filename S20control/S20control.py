@@ -30,12 +30,10 @@
 
 
 
-from __future__ import print_function
 import sys
 import pprint
 import socket
 import struct
-import sys
 import time
 
 
@@ -85,8 +83,8 @@ class OrviboS20:
     def close(self):
         try:
             self.sock.close()
-        except Exception as e:
-            print(e)
+        except Exception as exc:
+            print(exc)
 
     def _settimeout(self, timeout=None):
         self.sock.settimeout(timeout)  # seconds - in reality << 1 is needed, None = blocking (wait forever)
@@ -135,8 +133,8 @@ class OrviboS20:
                 status['detail']['srcmac'] = struct.unpack('6B', data[12:18])
             # print "mac: %s" % ':'.join( [ '%02x' % c for c in status['detail']['dstmac']  ] )
             # print "padding: %s" % ':'.join( [ '%02x' % c for c in status['detail']['srcmac'] ] )
-            elif status['detail']['length'] == 42 and (
-                            status['detail']['commandid'] == 0x7161 or status['detail']['commandid'] == 0x7167):
+            elif status['detail']['length'] == 42 and (status['detail']['commandid'] == 0x7161
+                                                       or status['detail']['commandid'] == 0x7167):
                 # returned discovery
                 # print "command: Discovery (response)"
                 status['command'] = 'Discovery (response)'
@@ -154,7 +152,7 @@ class OrviboS20:
                 # print "soc: %s" % status['detail']['soc']
                 status['detail']['timer'] = struct.unpack('I', data[37:41])[0]
                 # print "1900+sec: %d" % status['detail']['timer']
-                status['state'] = struct.unpack('B', data[41])[0]
+                status['state'] = struct.unpack('B', data[41:42])[0]
             # print "state: %d" % status['state']
             elif status['detail']['length'] == 24 and status['detail']['commandid'] == 0x636c:
                 # returned subscription TODO separate this - we should only be looking for subscription related stuff after and not tricked by other (discovery) stuff
@@ -165,7 +163,7 @@ class OrviboS20:
                 zero = struct.unpack('>5B', data[18:23])
                 for i in range(5):
                     if zero[i] != 0:
-                        print("WARNING: [1] zero[%d] = 0x%02x\n" % (i, zero), file=sys.stderr)
+                        print("WARNING: [1] zero[{:d}] = 0x{:02x}\n".format(i, zero), file=sys.stderr)
                 status['state'] = data[23]
             # print "state: %d" % status['state']
             elif status['detail']['length'] == 23 and status['detail']['commandid'] == 0x6463:
@@ -187,10 +185,10 @@ class OrviboS20:
             status['timeout'] = True
             if self.exitontimeout:
                 status['exit'] = True
-        except UnknownPacket as e:  # TODO this should be more specific to avoid trapping syntax errors
-            print("Error: %s:" % e, file=sys.stderr)
+        except UnknownPacket as exc:  # TODO this should be more specific to avoid trapping syntax errors
+            print("Error: {}:".format(exc), file=sys.stderr)
             print("Unknown packet:", file=sys.stderr)
-            for c in struct.unpack('%dB' % len(data), data):
+            for c in struct.unpack('{:d}B'.format(len(data)), data):
                 print("* %02x \"%s\"\n" % (c, chr(c)), file=sys.stderr)
 
         # fill in text MAC
@@ -325,7 +323,8 @@ def main():
             socket.AF_INET,  # Internet
             socket.SOCK_DGRAM  # UDP
         )
-        sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST,
+        sock.setsockopt(socket.SOL_SOCKET,
+                        socket.SO_BROADCAST,
                         1)  # https://stackoverflow.com/questions/11457676/python-socket-error-errno-13-permission-denied
         sock.settimeout(2)  # seconds - in reality << 1 is needed
 
@@ -342,7 +341,7 @@ def main():
             print('FATAL - got "%s" in response to set SSID' % data.rstrip(), file=sys.stderr)
             sys.exit(1)
 
-        key = raw_input('Enter WIFI key for "%s": ' % wlan)
+        key = input('Enter WIFI key for "%s": ' % wlan)
         sock.sendto("AT+WSKEY=WPA2PSK,AES,%s\r" % key, (ip, 48899))
         data, addr = sock.recvfrom(1024)
 
